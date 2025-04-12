@@ -15,8 +15,6 @@
     <!-- Preconnect to Google Maps domains to improve loading -->
     <link rel="preconnect" href="https://maps.googleapis.com">
     <link rel="preconnect" href="https://maps.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     
     <!-- Add inline critical CSS to speed up initial paint -->
     <style>
@@ -47,7 +45,87 @@
       @keyframes spin {
         to { transform: rotate(360deg); }
       }
+      
+      /* Fallback map container styles */
+      .map-container {
+        background-color: #e5e7eb;
+        height: 100%;
+        width: 100%;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        color: #6b7280;
+      }
     </style>
+    
+    <!-- Inline Google Maps script for faster loading -->
+    <script>
+      // Define a global variable to store the API key
+      window.GOOGLE_MAPS_API_KEY = "__GOOGLE_MAPS_API_KEY__";
+      
+      // Provide fallback in case the key isn't replaced
+      if (window.GOOGLE_MAPS_API_KEY === "__GOOGLE_MAPS_API_KEY__") {
+        console.warn("Environment variable not replaced. Using direct env var.");
+        window.GOOGLE_MAPS_API_KEY = "AIzaSyA0xt9YcmzryG50eu70TD5fx-Ba-KhPmYI";
+      }
+      
+      // Create a direct iframe-based map renderer as a fallback
+      window.createFallbackMap = function(container, lat, lng) {
+        if (!container) return;
+        
+        const iframe = document.createElement('iframe');
+        iframe.width = '100%';
+        iframe.height = '100%';
+        iframe.frameBorder = '0';
+        iframe.style.border = '0';
+        iframe.src = `https://www.google.com/maps/embed/v1/view?key=${window.GOOGLE_MAPS_API_KEY}&center=${lat},${lng}&zoom=12`;
+        
+        container.innerHTML = '';
+        container.appendChild(iframe);
+        return true;
+      };
+      
+      // Track if Google Maps loaded successfully
+      window.googleMapsLoaded = false;
+      
+      // Use multiple approaches to load Google Maps
+      (function loadGoogleMaps() {
+        if (window.googleMapsLoaded) return;
+        
+        // Method 1: Use async script loading
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${window.GOOGLE_MAPS_API_KEY}&libraries=places,geometry&v=weekly&callback=googleMapsCallback`;
+        script.async = true;
+        script.defer = true;
+        
+        // Define callback
+        window.googleMapsCallback = function() {
+          window.googleMapsLoaded = true;
+          console.log('Google Maps loaded successfully');
+          window.dispatchEvent(new Event('google-maps-loaded'));
+        };
+        
+        // Handle errors
+        script.onerror = () => {
+          console.error('Google Maps failed to load via CDN. Trying alternative method...');
+          // Try proxy if direct loading fails
+          tryAlternativeLoading();
+        };
+        
+        document.head.appendChild(script);
+        
+        // Method 2: Alternative loading via proxy (if method 1 fails)
+        function tryAlternativeLoading() {
+          const proxyScript = document.createElement('script');
+          proxyScript.src = `/maps-api/api/js?key=${window.GOOGLE_MAPS_API_KEY}&libraries=places,geometry&v=weekly&callback=googleMapsCallback`;
+          proxyScript.async = true;
+          proxyScript.defer = true;
+          document.head.appendChild(proxyScript);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root">
@@ -56,7 +134,40 @@
         <div class="spinner"></div>
       </div>
     </div>
+    
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Ad blocker detection -->
+    <script>
+      // Check if ad blocker is active by attempting to load a test script
+      setTimeout(function() {
+        if (!window.googleMapsLoaded) {
+          console.warn("Google Maps not loaded after timeout. Likely blocked by an ad blocker.");
+          
+          // Show warning for users
+          const warningEl = document.createElement('div');
+          warningEl.innerHTML = `
+            <div style="position: fixed; bottom: 20px; right: 20px; background: #fff0c3; border: 1px solid #ffa500; 
+                        padding: 10px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); max-width: 300px; z-index: 9999;">
+              <strong>Ad Blocker Detected</strong>
+              <p style="margin: 5px 0">Google Maps functionality may be limited. Please disable your ad blocker for this site.</p>
+              <button onclick="this.parentNode.remove()" style="background: #ffa500; border: none; padding: 5px 10px; 
+                       border-radius: 4px; color: white; float: right; cursor: pointer;">
+                Dismiss
+              </button>
+              <div style="clear: both"></div>
+            </div>
+          `;
+          document.body.appendChild(warningEl);
+        }
+      }, 5000);
+    </script>
+    
     <!-- Note: If you're experiencing issues with maps loading, please disable ad blockers for this site -->
+    <noscript>
+      <div style="padding: 20px; text-align: center; background-color: #f8d7da; color: #721c24; margin: 20px;">
+        JavaScript must be enabled to use this app.
+      </div>
+    </noscript>
   </body>
 </html>

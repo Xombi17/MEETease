@@ -12,7 +12,7 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
       name,
       isReady: false,
       isSharing: false,
-    }],
+    }]
   })),
 
   removeParticipant: (id: string) => set((state) => ({

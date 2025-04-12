@@ -2,7 +2,22 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Search, AlertCircle } from 'lucide-react';
 import { SearchIcon, AlertCircleIcon } from './fallback/FallbackIcons';
 import { Location } from '../types/maps';
-import { getGoogleMapsLoadPromise } from './Map';
+
+// Define for TypeScript support
+declare global {
+  namespace google.maps.places {
+    class PlacesAutocompleteElement extends HTMLElement {
+      constructor(options: {
+        inputPlaceholder?: string;
+        inputType?: string;
+        appearance?: {
+          style?: 'inline' | 'pill' | 'default';
+        };
+        types?: string[];
+      });
+    }
+  }
+}
 
 interface LocationSearchProps {
   onLocationSelect: (location: Location) => void;
@@ -14,18 +29,56 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
   placeholder = "Search for a location"
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete>();
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const autocompleteElementRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [iconError, setIconError] = useState(false);
+  const [useModernAPI, setUseModernAPI] = useState(false);
+
+  // Helper to check if Google Maps is loaded
+  const isGoogleMapsLoaded = () => {
+    return typeof window !== 'undefined' && window.google && window.google.maps;
+  };
+
+  // Helper to extract location from place
+  const extractLocationFromPlace = (place: google.maps.places.PlaceResult): Location | null => {
+    if (place?.geometry?.location) {
+      return {
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+        address: place.formatted_address,
+      };
+    }
+    return null;
+  };
 
   useEffect(() => {
-    const initializeAutocomplete = async () => {
+    const initializeAutocomplete = () => {
       try {
         setIsLoading(true);
         setError(null);
-        await getGoogleMapsLoadPromise();
         
+        if (!isGoogleMapsLoaded()) {
+          // Wait for Google Maps to load via event
+          const handleMapsLoaded = () => {
+            window.removeEventListener('google-maps-loaded', handleMapsLoaded);
+            initializeAutocomplete();
+          };
+          
+          window.addEventListener('google-maps-loaded', handleMapsLoaded);
+          return;
+        }
+
+        // Check if the modern PlacesAutocompleteElement is available
+        if (window.google.maps.places.PlacesAutocompleteElement) {
+          console.log("Using modern PlacesAutocompleteElement API");
+          setUseModernAPI(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Fallback to legacy Autocomplete
         if (!inputRef.current) return;
 
         autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
@@ -34,14 +87,11 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
 
         autocompleteRef.current.addListener('place_changed', () => {
           const place = autocompleteRef.current?.getPlace();
-          
-          if (place?.geometry?.location) {
-            const location: Location = {
-              lat: place.geometry.location.lat(),
-              lng: place.geometry.location.lng(),
-              address: place.formatted_address,
-            };
-            onLocationSelect(location);
+          if (place) {
+            const location = extractLocationFromPlace(place);
+            if (location) {
+              onLocationSelect(location);
+            }
           }
         });
 
@@ -53,8 +103,75 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
       }
     };
 
-    initializeAutocomplete();
+    // Try to initialize directly or wait for maps to load
+    if (isGoogleMapsLoaded()) {
+      initializeAutocomplete();
+    } else {
+      // Set up a timeout in case Google Maps never loads
+      const timeoutId = setTimeout(() => {
+        if (!isGoogleMapsLoaded()) {
+          setError('Google Maps API not loaded. Try disabling ad blockers.');
+          setIsLoading(false);
+        }
+      }, 5000);
+      
+      // Listen for maps loaded event
+      const handleMapsLoaded = () => {
+        clearTimeout(timeoutId);
+        window.removeEventListener('google-maps-loaded', handleMapsLoaded);
+        initializeAutocomplete();
+      };
+      
+      window.addEventListener('google-maps-loaded', handleMapsLoaded);
+      
+      return () => {
+        clearTimeout(timeoutId);
+        window.removeEventListener('google-maps-loaded', handleMapsLoaded);
+      };
+    }
   }, [onLocationSelect]);
+
+  // Initialize the modern API if we're using it
+  useEffect(() => {
+    if (!useModernAPI || !autocompleteElementRef.current || !window.google?.maps?.places?.PlacesAutocompleteElement) {
+      return;
+    }
+
+    try {
+      // Clean any previous elements
+      autocompleteElementRef.current.innerHTML = '';
+      
+      // Create the modern autocomplete element
+      const autocompleteElement = new window.google.maps.places.PlacesAutocompleteElement({
+        inputPlaceholder: placeholder,
+        inputType: 'text',
+        appearance: {
+          style: 'inline',
+        },
+        types: ['geocode', 'establishment'],
+      });
+
+      // Add place change listener
+      autocompleteElement.addEventListener('gmp-placeselect', (event: any) => {
+        const place = event.place;
+        if (place) {
+          const location: Location = {
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng(),
+            address: place.formattedAddress,
+          };
+          onLocationSelect(location);
+        }
+      });
+
+      // Append to the container
+      autocompleteElementRef.current.appendChild(autocompleteElement);
+    } catch (error) {
+      console.error("Error initializing modern Places Autocomplete:", error);
+      setUseModernAPI(false);
+      setError("Could not initialize modern Places API");
+    }
+  }, [useModernAPI, placeholder, onLocationSelect]);
 
   // Manual location entry fallback
   const handleManualEntry = () => {
@@ -79,6 +196,23 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
   const SearchIconComponent = iconError ? SearchIcon : Search;
   const AlertIconComponent = iconError ? AlertCircleIcon : AlertCircle;
 
+  // If modern API is available, use it
+  if (useModernAPI) {
+    return (
+      <div className="space-y-2">
+        <div ref={autocompleteElementRef} className="w-full"></div>
+        
+        {error && (
+          <div className="flex items-center gap-2 text-xs text-red-600">
+            <AlertIconComponent size={14} onError={() => setIconError(true)} />
+            <span>Google Maps unavailable. Using manual entry mode.</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Traditional API or fallback
   return (
     <div className="space-y-2">
       <div className="relative">
