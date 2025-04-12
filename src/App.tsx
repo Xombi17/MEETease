@@ -10,10 +10,49 @@ import type { Location } from './types/maps';
 function App() {
   const [showApp, setShowApp] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sessionCode, setSessionCode] = useState<string>('');
+  const [joinCode, setJoinCode] = useState<string>('');
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
+  const [isJoiningSession, setIsJoiningSession] = useState(false);
+  const [isSessionActive, setIsSessionActive] = useState(false);
   const { participants, setDestination, updateParticipantLocation } = useMeetingStore();
 
   const handleParticipantLocation = (participantId: string) => (location: Location) => {
     updateParticipantLocation(participantId, location);
+  };
+
+  const generateSessionCode = () => {
+    // Generate a random 6-character alphanumeric code
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+      result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
+  };
+
+  const handleCreateSession = () => {
+    setIsCreatingSession(true);
+    // Generate a random session code
+    const newCode = generateSessionCode();
+    setSessionCode(newCode);
+    // In a real app, this would connect to a backend
+    setTimeout(() => {
+      setIsCreatingSession(false);
+      setIsSessionActive(true);
+    }, 1500);
+  };
+
+  const handleJoinSession = () => {
+    if (!joinCode) return;
+    
+    setIsJoiningSession(true);
+    // In a real app, this would validate with a backend
+    setTimeout(() => {
+      setSessionCode(joinCode);
+      setIsJoiningSession(false);
+      setIsSessionActive(true);
+    }, 1500);
   };
 
   if (!showApp) {
@@ -104,13 +143,13 @@ function App() {
               >
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-900/50 border border-indigo-700 mb-6">
                   <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></div>
-                  <span className="text-sm font-medium text-indigo-300">Making meetups simpler than ever</span>
+                  <span className="text-sm font-medium text-indigo-300">Real-time location sharing</span>
                 </div>
                 <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-                  Find the <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-pink-400">perfect</span> meeting spot for everyone
+                  Connect and <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-pink-400">meet up</span> from anywhere
                 </h1>
                 <p className="text-xl text-gray-300 mb-8">
-                  MEETease helps you and your friends find the most convenient meeting point based on everyone's location, making group coordination effortless.
+                  MEETease lets you connect multiple devices, share locations in real-time, and find the perfect meeting spot for everyone in your group.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <motion.button
@@ -119,7 +158,7 @@ function App() {
                     onClick={() => setShowApp(true)}
                     className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-4 rounded-full text-lg font-semibold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
                   >
-                    Get Started
+                    Create Meeting
                     <ArrowRight size={20} />
                   </motion.button>
                   <motion.button
@@ -145,40 +184,56 @@ function App() {
                   <div className="w-full h-full rounded-xl relative bg-black/40 overflow-hidden">
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="relative w-3/4 h-3/4">
-                        {/* Map mock representation */}
+                        {/* Map mock representation with multiple devices */}
                         <div className="absolute inset-0 bg-gray-800 rounded-xl overflow-hidden">
                           <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
                             <rect width="100%" height="100%" fill="#1f2937"/>
                             <path d="M0 50 Q 25 25, 50 50 T 100 50 T 150 50 T 200 50" stroke="#4f46e5" strokeWidth="2" fill="none"/>
                             <path d="M0 70 Q 25 95, 50 70 T 100 70 T 150 70 T 200 70" stroke="#7c3aed" strokeWidth="2" fill="none"/>
                             <path d="M70 0 Q 95 25, 70 50 T 70 100 T 70 150 T 70 200" stroke="#ec4899" strokeWidth="2" fill="none"/>
-                            <circle cx="50" cy="50" r="6" fill="#4f46e5"/>
-                            <circle cx="150" cy="70" r="6" fill="#7c3aed"/>
-                            <circle cx="100" cy="60" r="8" fill="#10b981"/>
                           </svg>
                         </div>
                         
-                        {/* Animated location markers */}
-                        <div className="absolute top-1/4 left-1/4 w-6 h-6">
-                          <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center animate-bounce">
-                            <span className="block w-4 h-4 rounded-full bg-indigo-300"></span>
+                        {/* Multiple device frames with location markers */}
+                        <div className="absolute top-0 left-0 w-1/2 h-1/2 transform -translate-x-1/4 -translate-y-1/4">
+                          <div className="w-full h-full rounded-xl border-4 border-gray-700 bg-gray-800 p-2">
+                            <div className="w-full h-full rounded-lg bg-gray-900 relative overflow-hidden">
+                              <div className="absolute bottom-1/4 right-1/4 w-6 h-6">
+                                <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center animate-bounce">
+                                  <span className="block w-4 h-4 rounded-full bg-indigo-300"></span>
+                                </div>
+                                <div className="w-12 h-12 rounded-full bg-indigo-500/30 absolute -top-3 -left-3 animate-ping"></div>
+                              </div>
+                            </div>
                           </div>
-                          <div className="w-12 h-12 rounded-full bg-indigo-500/30 absolute -top-3 -left-3 animate-ping"></div>
                         </div>
                         
-                        <div className="absolute bottom-1/4 right-1/4 w-6 h-6">
-                          <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center animate-bounce animation-delay-1000">
-                            <span className="block w-4 h-4 rounded-full bg-purple-300"></span>
+                        <div className="absolute bottom-0 right-0 w-3/5 h-3/5 transform translate-x-1/4 translate-y-1/4">
+                          <div className="w-full h-full rounded-xl border-4 border-gray-700 bg-gray-800 p-2">
+                            <div className="w-full h-full rounded-lg bg-gray-900 relative overflow-hidden">
+                              <div className="absolute top-1/4 left-1/4 w-6 h-6">
+                                <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center animate-bounce animation-delay-1000">
+                                  <span className="block w-4 h-4 rounded-full bg-purple-300"></span>
+                                </div>
+                                <div className="w-12 h-12 rounded-full bg-purple-500/30 absolute -top-3 -left-3 animate-ping animation-delay-1000"></div>
+                              </div>
+                            </div>
                           </div>
-                          <div className="w-12 h-12 rounded-full bg-purple-500/30 absolute -top-3 -left-3 animate-ping animation-delay-1000"></div>
                         </div>
                         
+                        {/* Central meeting point */}
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8">
                           <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center animate-pulse">
                             <span className="block w-6 h-6 rounded-full bg-green-300"></span>
                           </div>
                           <div className="w-16 h-16 rounded-full bg-green-500/30 absolute -top-4 -left-4 animate-ping"></div>
                         </div>
+                        
+                        {/* Connection lines */}
+                        <svg className="absolute inset-0" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                          <line x1="25%" y1="25%" x2="50%" y2="50%" stroke="#4f46e5" strokeWidth="2" strokeDasharray="4" className="animate-pulse"/>
+                          <line x1="75%" y1="75%" x2="50%" y2="50%" stroke="#7c3aed" strokeWidth="2" strokeDasharray="4" className="animate-pulse"/>
+                        </svg>
                       </div>
                     </div>
                   </div>
@@ -199,31 +254,31 @@ function App() {
             <div className="text-center mb-16">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Choose MEETease?</h2>
               <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-                Our app makes coordination effortless with smart features designed to eliminate the "where should we meet" hassle.
+                Our app makes multi-device coordination effortless with smart features designed to connect people in real time.
               </p>
             </div>
             
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
               {[
                 {
-                  icon: <Users className="text-indigo-400" size={32} />,
-                  title: "Group Coordination",
-                  description: "Perfect for groups of any size, making it easy to find a central meeting point."
+                  icon: <Share2 className="text-indigo-400" size={32} />,
+                  title: "Real-time Sharing",
+                  description: "Share your live location across multiple devices just like WhatsApp, but with more features."
                 },
                 {
                   icon: <MapIcon className="text-indigo-400" size={32} />,
-                  title: "Smart Location",
+                  title: "Smart Meeting Points",
                   description: "Automatically calculates the optimal meeting point based on everyone's location."
                 },
                 {
-                  icon: <Route className="text-indigo-400" size={32} />,
-                  title: "Travel Optimization",
-                  description: "Considers travel time, distance, and traffic to suggest the most convenient spot."
+                  icon: <Users className="text-indigo-400" size={32} />,
+                  title: "Multi-Device Support",
+                  description: "Works on any device with a browser - no app installation required."
                 },
                 {
-                  icon: <Clock className="text-indigo-400" size={32} />,
-                  title: "Time Saving",
-                  description: "Less time coordinating, more time enjoying with friends and family."
+                  icon: <Route className="text-indigo-400" size={32} />,
+                  title: "Dynamic Routing",
+                  description: "Get personalized directions to the meeting point from your current location."
                 }
               ].map((feature, index) => (
                 <motion.div
@@ -256,7 +311,7 @@ function App() {
             <div className="text-center mb-16">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">How MEETease Works</h2>
               <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-                Simple, intuitive, and designed to make your life easier.
+                Connect across devices and find the perfect meeting spot in four easy steps.
               </p>
             </div>
             
@@ -266,24 +321,24 @@ function App() {
                 
                 {[
                   {
-                    title: "Add Your Group",
-                    description: "Enter the locations of all participants who will be meeting up.",
+                    title: "Create a Meeting",
+                    description: "Start a new meeting and share the unique meeting code with your friends.",
+                    icon: <MapPin className="text-white" size={24} />
+                  },
+                  {
+                    title: "Join From Any Device",
+                    description: "Everyone joins using the meeting code from their phones, tablets, or computers.",
                     icon: <Users className="text-white" size={24} />
                   },
                   {
-                    title: "Algorithm Magic",
-                    description: "Our smart algorithm calculates the optimal meeting point based on everyone's location.",
-                    icon: <MapIcon className="text-white" size={24} />
-                  },
-                  {
-                    title: "Get Directions",
-                    description: "Each person receives personalized directions to the meeting point.",
-                    icon: <Route className="text-white" size={24} />
-                  },
-                  {
-                    title: "Meet & Go",
-                    description: "Meet at the suggested location and continue to your final destination together.",
+                    title: "Share Real-time Locations",
+                    description: "All participants share their locations, which are visible on everyone's maps.",
                     icon: <Share2 className="text-white" size={24} />
+                  },
+                  {
+                    title: "Find Your Meeting Point",
+                    description: "The app calculates the optimal meeting spot and provides directions for everyone.",
+                    icon: <MapIcon className="text-white" size={24} />
                   }
                 ].map((step, index) => (
                   <motion.div
@@ -423,17 +478,113 @@ function App() {
     );
   }
 
+  // New session management UI that appears before the main app
+  if (!isSessionActive) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-950 to-pink-950 text-white flex flex-col">
+        <header className="border-b border-white/10 backdrop-blur-sm bg-black/20 px-4 py-4">
+          <div className="container mx-auto flex items-center gap-2">
+            <div className="p-2 rounded-full bg-indigo-600">
+              <Navigation size={20} className="text-white" />
+            </div>
+            <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-pink-400">
+              MEETease
+            </span>
+          </div>
+        </header>
+        
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-8 shadow-lg">
+            <h2 className="text-2xl font-bold mb-6 text-center">Start or Join a Meeting</h2>
+            
+            <div className="space-y-6">
+              <div className="p-6 border border-indigo-500/30 rounded-xl bg-indigo-900/20">
+                <h3 className="text-xl font-medium mb-4">Create a New Meeting</h3>
+                <p className="text-gray-300 mb-4">Create a meeting and share the code with others to join.</p>
+                <button 
+                  onClick={handleCreateSession}
+                  disabled={isCreatingSession}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 text-white px-4 py-3 rounded-lg flex items-center justify-center"
+                >
+                  {isCreatingSession ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Creating...
+                    </>
+                  ) : 'Create Meeting'}
+                </button>
+              </div>
+              
+              <div className="p-6 border border-purple-500/30 rounded-xl bg-purple-900/20">
+                <h3 className="text-xl font-medium mb-4">Join an Existing Meeting</h3>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Meeting Code
+                  </label>
+                  <input 
+                    type="text" 
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                    placeholder="Enter 6-digit code" 
+                    maxLength={6}
+                    className="w-full px-4 py-3 bg-black/30 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <button 
+                  onClick={handleJoinSession}
+                  disabled={isJoiningSession || joinCode.length !== 6}
+                  className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg flex items-center justify-center"
+                >
+                  {isJoiningSession ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Joining...
+                    </>
+                  ) : 'Join Meeting'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Main app interface - now with session info
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="container mx-auto px-4 py-8">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Navigation className="text-indigo-600" />
-            MEETease
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Find the perfect meeting point for everyone
-          </p>
+        <header className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+              <Navigation className="text-indigo-600" />
+              MEETease
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Find the perfect meeting point for everyone
+            </p>
+          </div>
+          
+          {/* Session information */}
+          <div className="mt-4 sm:mt-0 flex items-center gap-3 bg-white py-2 px-4 rounded-lg shadow-sm">
+            <div className="flex flex-col">
+              <span className="text-xs text-gray-500">Meeting Code:</span>
+              <span className="font-mono font-bold text-indigo-600">{sessionCode}</span>
+            </div>
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(sessionCode);
+                // In a real app, show a toast notification
+                alert("Meeting code copied to clipboard!");
+              }}
+              className="p-2 hover:bg-gray-100 rounded-full"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </button>
+          </div>
         </header>
 
         {/* Ad Blocker Warning Banner - Only shown when needed */}

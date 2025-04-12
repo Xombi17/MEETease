@@ -58,7 +58,7 @@ const Map: React.FC<MapProps> = ({ center = MUMBAI_CENTER, zoom = 12 }) => {
       
       // Create and insert the script
       try {
-        const apiKey = window.GOOGLE_MAPS_API_KEY || 'AIzaSyA0xt9YcmzryG50eu70TD5fx-Ba-KhPmYI';
+        const apiKey = window.GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
         
         // Try different domains to bypass ad blockers
         const domains = [
@@ -98,7 +98,7 @@ const Map: React.FC<MapProps> = ({ center = MUMBAI_CENTER, zoom = 12 }) => {
     if (!mapRef.current) return false;
     
     try {
-      const apiKey = window.GOOGLE_MAPS_API_KEY || 'AIzaSyA0xt9YcmzryG50eu70TD5fx-Ba-KhPmYI';
+      const apiKey = window.GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
       
       // Try to create a data URI iframe to bypass ad blockers
       const iframe = document.createElement('iframe');

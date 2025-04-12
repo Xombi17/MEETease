@@ -13,6 +13,7 @@
     "@googlemaps/js-api-loader": "^1.16.2",
     "@googlemaps/react-wrapper": "^1.1.35",
     "caniuse-lite": "^1.0.30001713",
+    "firebase": "^11.6.0",
     "framer-motion": "^11.0.8",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
