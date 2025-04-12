@@ -2,12 +2,61 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/map-pin-icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Meeting Point Coordination App Setup</title>
+    <title>MEETease - Find the Perfect Meeting Point</title>
+    <meta name="description" content="MEETease helps you and your friends find the most convenient meeting point based on everyone's location, making group coordination effortless." />
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Preconnect to Google Maps domains to improve loading -->
+    <link rel="preconnect" href="https://maps.googleapis.com">
+    <link rel="preconnect" href="https://maps.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    
+    <!-- Add inline critical CSS to speed up initial paint -->
+    <style>
+      /* Minimal styles to prevent flash of unstyled content */
+      body {
+        margin: 0;
+        font-family: 'Inter', sans-serif;
+        background-color: #f3f4f6;
+      }
+      #root {
+        min-height: 100vh;
+      }
+      .loading-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        width: 100%;
+      }
+      .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(79, 70, 229, 0.2);
+        border-radius: 50%;
+        border-top-color: #4f46e5;
+        animation: spin 1s ease-in-out infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Fallback loading indicator -->
+      <div class="loading-indicator">
+        <div class="spinner"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Note: If you're experiencing issues with maps loading, please disable ad blockers for this site -->
   </body>
 </html>

@@ -1,9 +1,12 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
 import { useMeetingStore } from '../store/meetingStore';
 import { Location, MUMBAI_CENTER } from '../types/maps';
+import { AlertTriangle } from 'lucide-react';
+import { AlertTriangleIcon } from './fallback/FallbackIcons';
 
-let googleMapsLoadPromise: Promise<void>;
+// Change the type to match what the loader.load() returns
+let googleMapsLoadPromise: Promise<typeof google>;
 export const getGoogleMapsLoadPromise = () => googleMapsLoadPromise;
 
 interface MapProps {
@@ -17,33 +20,51 @@ const Map: React.FC<MapProps> = ({ center = MUMBAI_CENTER, zoom = 12 }) => {
   const markersRef = useRef<google.maps.Marker[]>([]);
   const directionsRendererRef = useRef<google.maps.DirectionsRenderer[]>([]);
   const locationUpdateIntervalRef = useRef<number[]>([]);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [iconError, setIconError] = useState(false);
   
   const { participants, meetingPoint, destination, updateParticipantLocation, updateDirections } = useMeetingStore();
 
   useEffect(() => {
-    const loader = new Loader({
-      apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
-      version: "weekly",
-      libraries: ["places", "geometry"]
-    });
-
-    googleMapsLoadPromise = loader.load();
-
-    googleMapsLoadPromise.then(() => {
-      if (mapRef.current && !mapInstanceRef.current) {
-        mapInstanceRef.current = new google.maps.Map(mapRef.current, {
-          center,
-          zoom,
-          styles: [
-            {
-              featureType: "poi",
-              elementType: "labels",
-              stylers: [{ visibility: "off" }]
-            }
-          ]
+    const loadGoogleMaps = async () => {
+      try {
+        setIsLoading(true);
+        const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+        
+        const loader = new Loader({
+          apiKey,
+          version: "weekly",
+          libraries: ["places", "geometry"],
+          // Use relative URL to avoid ad blockers
+          mapIds: ["map_id"],
         });
+
+        googleMapsLoadPromise = loader.load();
+        await googleMapsLoadPromise;
+
+        if (mapRef.current && !mapInstanceRef.current) {
+          mapInstanceRef.current = new google.maps.Map(mapRef.current, {
+            center,
+            zoom,
+            styles: [
+              {
+                featureType: "poi",
+                elementType: "labels",
+                stylers: [{ visibility: "off" }]
+              }
+            ]
+          });
+        }
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error loading Google Maps:', error);
+        setMapError('Failed to load Google Maps. Please check your internet connection or try disabling ad blockers.');
+        setIsLoading(false);
       }
-    });
+    };
+
+    loadGoogleMaps();
 
     return () => {
       locationUpdateIntervalRef.current.forEach(interval => clearInterval(interval));
@@ -51,7 +72,7 @@ const Map: React.FC<MapProps> = ({ center = MUMBAI_CENTER, zoom = 12 }) => {
   }, []);
 
   useEffect(() => {
-    if (!mapInstanceRef.current || !meetingPoint) return;
+    if (!mapInstanceRef.current || !meetingPoint || mapError) return;
 
     // Clear existing markers and directions renderers
     markersRef.current.forEach(marker => marker.setMap(null));
@@ -193,7 +214,40 @@ const Map: React.FC<MapProps> = ({ center = MUMBAI_CENTER, zoom = 12 }) => {
       });
       mapInstanceRef.current.fitBounds(bounds);
     }
-  }, [participants, meetingPoint, destination]);
+  }, [participants, meetingPoint, destination, mapError]);
+
+  if (mapError) {
+    return (
+      <div className="w-full h-full rounded-lg shadow-lg flex items-center justify-center bg-gray-100">
+        <div className="text-center p-6 max-w-md">
+          {!iconError ? (
+            <AlertTriangle size={48} className="text-amber-500 mx-auto mb-4" onError={() => setIconError(true)} />
+          ) : (
+            <AlertTriangleIcon size={48} className="text-amber-500 mx-auto mb-4" />
+          )}
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Map Loading Error</h3>
+          <p className="text-gray-600">{mapError}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md"
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="w-full h-full rounded-lg shadow-lg flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading map...</p>
+        </div>
+      </div>
+    );
+  }
 
   return <div ref={mapRef} className="w-full h-full rounded-lg shadow-lg" />;
 };
