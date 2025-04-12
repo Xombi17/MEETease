@@ -3,6 +3,7 @@ export interface Location {
   lng: number;
   address?: string;
   timestamp?: number;
+  participantId?: string;
 }
 
 export interface Participant {
@@ -14,10 +15,15 @@ export interface Participant {
   directions?: google.maps.DirectionsResult;
 }
 
+export interface MeetingSettings {
+  preferLeaflet: boolean;
+}
+
 export interface MeetingState {
   participants: Participant[];
   meetingPoint?: Location;
   destination?: Location;
+  settings?: MeetingSettings;
   
   addParticipant: (name: string, id?: string) => void;
   removeParticipant: (id: string) => void;
@@ -27,6 +33,7 @@ export interface MeetingState {
   toggleLocationSharing: (id: string) => void;
   updateDirections: (id: string, directions: google.maps.DirectionsResult) => void;
   calculateMeetingPoint: () => void;
+  updateSettings?: (settings: Partial<MeetingSettings>) => void;
 }
 
 export const MUMBAI_CENTER: Location = {

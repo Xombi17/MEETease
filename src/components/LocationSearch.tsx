@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Search, AlertCircle } from 'lucide-react';
 import { SearchIcon, AlertCircleIcon } from './fallback/FallbackIcons';
 import { Location } from '../types/maps';
+import LeafletLocationSearch from './fallback/LeafletLocationSearch';
 
 // Define for TypeScript support
 declare global {
@@ -22,11 +23,13 @@ declare global {
 interface LocationSearchProps {
   onLocationSelect: (location: Location) => void;
   placeholder?: string;
+  participantId?: string; // Optional participantId to track which participant this search is for
 }
 
 const LocationSearch: React.FC<LocationSearchProps> = ({
   onLocationSelect,
-  placeholder = "Search for a location"
+  placeholder = "Search for a location",
+  participantId
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
@@ -35,6 +38,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [iconError, setIconError] = useState(false);
   const [useModernAPI, setUseModernAPI] = useState(false);
+  const [useLeaflet, setUseLeaflet] = useState(false);
 
   // Helper to check if Google Maps is loaded
   const isGoogleMapsLoaded = () => {
@@ -48,9 +52,22 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
         lat: place.geometry.location.lat(),
         lng: place.geometry.location.lng(),
         address: place.formatted_address,
+        timestamp: Date.now(), // Add timestamp for freshness
+        participantId // Store which participant this location is for
       };
     }
     return null;
+  };
+
+  // Handle location selection with proper participant tracking
+  const handleLocationSelection = (location: Location) => {
+    // Ensure the participantId is included in the location data
+    const locationWithParticipant = {
+      ...location,
+      timestamp: Date.now(),
+      participantId
+    };
+    onLocationSelect(locationWithParticipant);
   };
 
   useEffect(() => {
@@ -67,6 +84,16 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
           };
           
           window.addEventListener('google-maps-loaded', handleMapsLoaded);
+          
+          // Set a timeout for Google Maps loading
+          setTimeout(() => {
+            if (!isGoogleMapsLoaded() && !useLeaflet) {
+              console.log("Google Maps failed to load, switching to Leaflet search");
+              setUseLeaflet(true);
+              setIsLoading(false);
+            }
+          }, 3000);
+          
           return;
         }
 
@@ -90,7 +117,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
           if (place) {
             const location = extractLocationFromPlace(place);
             if (location) {
-              onLocationSelect(location);
+              handleLocationSelection(location);
             }
           }
         });
@@ -98,7 +125,8 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
         setIsLoading(false);
       } catch (error) {
         console.error('Error initializing Google Maps Autocomplete:', error);
-        setError('Failed to load location search. Please check your connection or try disabling ad blockers.');
+        setError('Failed to load location search. Switching to Leaflet search.');
+        setUseLeaflet(true);
         setIsLoading(false);
       }
     };
@@ -110,10 +138,10 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
       // Set up a timeout in case Google Maps never loads
       const timeoutId = setTimeout(() => {
         if (!isGoogleMapsLoaded()) {
-          setError('Google Maps API not loaded. Try disabling ad blockers.');
+          setUseLeaflet(true);
           setIsLoading(false);
         }
-      }, 5000);
+      }, 3000);
       
       // Listen for maps loaded event
       const handleMapsLoaded = () => {
@@ -129,7 +157,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
         window.removeEventListener('google-maps-loaded', handleMapsLoaded);
       };
     }
-  }, [onLocationSelect]);
+  }, [onLocationSelect, useLeaflet, participantId]);
 
   // Initialize the modern API if we're using it
   useEffect(() => {
@@ -159,8 +187,10 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
             lat: place.geometry.location.lat(),
             lng: place.geometry.location.lng(),
             address: place.formattedAddress,
+            timestamp: Date.now(),
+            participantId
           };
-          onLocationSelect(location);
+          handleLocationSelection(location);
         }
       });
 
@@ -169,9 +199,10 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
     } catch (error) {
       console.error("Error initializing modern Places Autocomplete:", error);
       setUseModernAPI(false);
-      setError("Could not initialize modern Places API");
+      setUseLeaflet(true);
+      setError("Could not initialize Google Places API. Using OpenStreetMap search instead.");
     }
-  }, [useModernAPI, placeholder, onLocationSelect]);
+  }, [useModernAPI, placeholder, onLocationSelect, participantId]);
 
   // Manual location entry fallback
   const handleManualEntry = () => {
@@ -184,8 +215,10 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
         lat: 19.0760 + randomOffset(),
         lng: 72.8777 + randomOffset(),
         address: inputRef.current.value,
+        timestamp: Date.now(),
+        participantId
       };
-      onLocationSelect(location);
+      handleLocationSelection(location);
       
       // Reset the field
       inputRef.current.value = '';
@@ -195,6 +228,22 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
 
   const SearchIconComponent = iconError ? SearchIcon : Search;
   const AlertIconComponent = iconError ? AlertCircleIcon : AlertCircle;
+
+  // If Leaflet search is enabled, use it
+  if (useLeaflet) {
+    return (
+      <div className="space-y-2">
+        <LeafletLocationSearch 
+          onLocationSelect={handleLocationSelection}
+          placeholder={placeholder}
+        />
+        <div className="flex items-center gap-2 text-xs text-emerald-600">
+          <SearchIconComponent size={14} onError={() => setIconError(true)} />
+          <span>Using OpenStreetMap search (ad-blocker friendly)</span>
+        </div>
+      </div>
+    );
+  }
 
   // If modern API is available, use it
   if (useModernAPI) {
@@ -220,9 +269,9 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
           ref={inputRef}
           type="text"
           placeholder={placeholder}
-          className={`w-full px-10 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-            error ? 'border-red-300' : 'border-gray-300'
-          }`}
+          className={`w-full px-10 py-3 border ${
+            error ? 'border-red-300 bg-red-50' : 'border-gray-200'
+          } rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all`}
           disabled={isLoading}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && error) {
@@ -240,18 +289,32 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
         {error && (
           <button
             onClick={handleManualEntry}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-indigo-600 hover:text-indigo-800"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-indigo-100 text-indigo-600 hover:bg-indigo-200 px-2 py-1 rounded text-xs font-medium"
             title="Use manual entry"
           >
-            Enter
+            Set
           </button>
+        )}
+        
+        {isLoading && (
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+            <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          </div>
         )}
       </div>
       
       {error && (
-        <div className="flex items-center gap-2 text-xs text-red-600">
-          <AlertIconComponent size={14} onError={() => setIconError(true)} />
-          <span>Google Maps unavailable. Using manual entry mode.</span>
+        <div className="flex items-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md text-xs text-yellow-700">
+          <AlertIconComponent size={14} className="flex-shrink-0" onError={() => setIconError(true)} />
+          <div>
+            <p>{error}</p>
+            <button 
+              onClick={() => setUseLeaflet(true)} 
+              className="mt-1 text-indigo-600 hover:text-indigo-800 font-medium"
+            >
+              Switch to OpenStreetMap search
+            </button>
+          </div>
         </div>
       )}
     </div>

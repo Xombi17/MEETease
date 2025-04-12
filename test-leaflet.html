@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leaflet Map Test</title>
+  
+  <!-- Load Leaflet CSS from CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+   integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+   crossorigin=""/>
+  
+  <!-- Load Leaflet JS from CDN -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+   integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+   crossorigin=""></script>
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    
+    #map {
+      width: 100%;
+      height: 400px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    h1 {
+      color: #3b82f6;
+    }
+    
+    .success-message {
+      padding: 10px 15px;
+      background-color: #d1fae5;
+      border: 1px solid #10b981;
+      border-radius: 6px;
+      color: #065f46;
+      margin-bottom: 20px;
+    }
+    
+    button {
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+      font-size: 14px;
+    }
+    
+    button:hover {
+      background-color: #2563eb;
+    }
+    
+    .legend {
+      background: white;
+      padding: 8px;
+      border-radius: 4px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+      font-size: 12px;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    
+    .color-box {
+      width: 12px;
+      height: 12px;
+      margin-right: 5px;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Leaflet Map Test</h1>
+    
+    <div class="success-message">
+      This map should load correctly even with ad blockers enabled
+    </div>
+    
+    <div id="map"></div>
+    
+    <div>
+      <button id="add-marker">Add Random Marker</button>
+      <button id="add-meeting-point">Add Meeting Point</button>
+      <button id="clear-markers">Clear All Markers</button>
+    </div>
+    
+    <p>Status: <span id="status">Map loaded successfully</span></p>
+  </div>
+  
+  <script>
+    // Initialize map
+    const map = L.map('map').setView([19.0760, 72.8777], 12);
+    
+    // Add OpenStreetMap tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(map);
+    
+    // Add a legend
+    const legend = L.control({position: 'bottomright'});
+    legend.onAdd = function(map) {
+      const div = L.DomUtil.create('div', 'legend');
+      div.innerHTML = `
+        <div class="legend-title">Map Legend</div>
+        <div class="legend-item">
+          <div class="color-box" style="background-color: #4F46E5"></div>
+          <span>Participants</span>
+        </div>
+        <div class="legend-item">
+          <div class="color-box" style="background-color: #10B981"></div>
+          <span>Meeting Point</span>
+        </div>
+      `;
+      return div;
+    };
+    legend.addTo(map);
+    
+    // Store markers
+    const markers = [];
+    let meetingPointMarker = null;
+    
+    // Button to add random marker
+    document.getElementById('add-marker').addEventListener('click', function() {
+      // Create random location near the center
+      const lat = 19.0760 + (Math.random() - 0.5) * 0.05;
+      const lng = 72.8777 + (Math.random() - 0.5) * 0.05;
+      
+      // Create participant marker icon
+      const participantIcon = L.divIcon({
+        html: `<div style="background-color: #4F46E5; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white;"></div>`,
+        className: 'participant-marker',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+      });
+      
+      // Add marker
+      const marker = L.marker([lat, lng], { icon: participantIcon })
+        .addTo(map)
+        .bindPopup(`Participant (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+      
+      markers.push(marker);
+      
+      // Fit bounds to show all markers
+      const bounds = L.featureGroup(markers).getBounds();
+      map.fitBounds(bounds, { padding: [30, 30] });
+      
+      // Update status
+      document.getElementById('status').textContent = `Added participant at ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    });
+    
+    // Button to add meeting point
+    document.getElementById('add-meeting-point').addEventListener('click', function() {
+      // If we have no markers, can't calculate meeting point
+      if (markers.length === 0) {
+        document.getElementById('status').textContent = 'Add some participants first';
+        return;
+      }
+      
+      // Calculate centroid of all markers
+      let totalLat = 0;
+      let totalLng = 0;
+      
+      markers.forEach(marker => {
+        const latlng = marker.getLatLng();
+        totalLat += latlng.lat;
+        totalLng += latlng.lng;
+      });
+      
+      const centerLat = totalLat / markers.length;
+      const centerLng = totalLng / markers.length;
+      
+      // Remove previous meeting point if it exists
+      if (meetingPointMarker) {
+        map.removeLayer(meetingPointMarker);
+      }
+      
+      // Create meeting point icon
+      const meetingIcon = L.divIcon({
+        html: `<div style="background-color: #10B981; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>`,
+        className: 'meeting-point-marker',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      });
+      
+      // Add meeting point marker
+      meetingPointMarker = L.marker([centerLat, centerLng], { icon: meetingIcon })
+        .addTo(map)
+        .bindPopup(`Meeting Point (${centerLat.toFixed(4)}, ${centerLng.toFixed(4)})`);
+      
+      // Fit bounds to show all markers including meeting point
+      const allMarkers = [...markers, meetingPointMarker];
+      const bounds = L.featureGroup(allMarkers).getBounds();
+      map.fitBounds(bounds, { padding: [30, 30] });
+      
+      // Update status
+      document.getElementById('status').textContent = `Added meeting point at ${centerLat.toFixed(4)}, ${centerLng.toFixed(4)}`;
+    });
+    
+    // Button to clear all markers
+    document.getElementById('clear-markers').addEventListener('click', function() {
+      // Remove all participant markers
+      markers.forEach(marker => {
+        map.removeLayer(marker);
+      });
+      markers.length = 0;
+      
+      // Remove meeting point marker if it exists
+      if (meetingPointMarker) {
+        map.removeLayer(meetingPointMarker);
+        meetingPointMarker = null;
+      }
+      
+      // Update status
+      document.getElementById('status').textContent = 'All markers cleared';
+    });
+  </script>
+</body>
+</html> 

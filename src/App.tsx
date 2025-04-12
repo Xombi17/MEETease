@@ -673,19 +673,27 @@ function App() {
         
         {/* Name Input Modal */}
         {isNameModalOpen && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white/10 backdrop-blur-lg border border-white/10 rounded-2xl p-8 shadow-lg w-full max-w-md mx-4">
-              <h2 className="text-2xl font-bold mb-4 text-center">What's your name?</h2>
-              <p className="text-gray-300 mb-6 text-center">Enter your name to continue</p>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+            <div className="bg-white/10 backdrop-blur-lg border border-white/10 rounded-2xl p-8 shadow-lg w-full max-w-md mx-4 animate-scaleIn">
+              <h2 className="text-2xl font-bold mb-4 text-center">Tell us your name</h2>
+              <p className="text-gray-300 mb-6 text-center">Your name will be visible to others in the meeting</p>
               
-              <input 
-                type="text" 
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                placeholder="Your name" 
-                className="w-full px-4 py-3 bg-black/30 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-6"
-                autoFocus
-              />
+              <div className="relative">
+                <input 
+                  type="text" 
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  placeholder="Your name" 
+                  className="w-full px-4 py-3 pl-10 bg-black/30 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-6"
+                  autoFocus
+                />
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </div>
+              </div>
               
               <div className="flex justify-end">
                 <button
@@ -701,12 +709,34 @@ function App() {
                       }
                     }
                   }}
-                  className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg"
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
                 >
                   Continue
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14"></path>
+                    <path d="m12 5 7 7-7 7"></path>
+                  </svg>
                 </button>
               </div>
             </div>
+          </div>
+        )}
+        
+        {/* Creating Session Loading State */}
+        {isCreatingSession && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-50 animate-fadeIn">
+            <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-6"></div>
+            <h3 className="text-xl font-semibold text-white mb-2">Creating Meeting</h3>
+            <p className="text-gray-300">Please wait while we set up your meeting...</p>
+          </div>
+        )}
+        
+        {/* Joining Session Loading State */}
+        {isJoiningSession && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-50 animate-fadeIn">
+            <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mb-6"></div>
+            <h3 className="text-xl font-semibold text-white mb-2">Joining Meeting</h3>
+            <p className="text-gray-300">Connecting to meeting {joinCode}...</p>
           </div>
         )}
         
@@ -715,13 +745,18 @@ function App() {
             <h2 className="text-2xl font-bold mb-6 text-center">Start or Join a Meeting</h2>
             
             <div className="space-y-6">
-              <div className="p-6 border border-indigo-500/30 rounded-xl bg-indigo-900/20">
-                <h3 className="text-xl font-medium mb-4">Create a New Meeting</h3>
+              <div className="p-6 border border-indigo-500/30 rounded-xl bg-indigo-900/20 hover:bg-indigo-900/30 transition-colors">
+                <h3 className="text-xl font-medium mb-4 flex items-center gap-2">
+                  <div className="p-2 rounded-full bg-indigo-600/40">
+                    <MapPin className="text-indigo-300" size={16} />
+                  </div>
+                  Create a New Meeting
+                </h3>
                 <p className="text-gray-300 mb-4">Create a meeting and share the code with others to join.</p>
                 <button 
                   onClick={handleCreateSession}
                   disabled={isCreatingSession}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 text-white px-4 py-3 rounded-lg flex items-center justify-center"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 text-white px-4 py-3 rounded-lg flex items-center justify-center transition-colors"
                 >
                   {isCreatingSession ? (
                     <>
@@ -732,25 +767,37 @@ function App() {
                 </button>
               </div>
               
-              <div className="p-6 border border-purple-500/30 rounded-xl bg-purple-900/20">
-                <h3 className="text-xl font-medium mb-4">Join an Existing Meeting</h3>
+              <div className="p-6 border border-purple-500/30 rounded-xl bg-purple-900/20 hover:bg-purple-900/30 transition-colors">
+                <h3 className="text-xl font-medium mb-4 flex items-center gap-2">
+                  <div className="p-2 rounded-full bg-purple-600/40">
+                    <Users className="text-purple-300" size={16} />
+                  </div>
+                  Join an Existing Meeting
+                </h3>
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-300 mb-1">
                     Meeting Code
                   </label>
-                  <input 
-                    type="text" 
-                    value={joinCode}
-                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                    placeholder="Enter 6-digit code" 
-                    maxLength={6}
-                    className="w-full px-4 py-3 bg-black/30 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      value={joinCode}
+                      onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                      placeholder="Enter 6-digit code" 
+                      maxLength={6}
+                      className="w-full px-4 py-3 pl-10 bg-black/30 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+                      </svg>
+                    </div>
+                  </div>
                 </div>
                 <button 
                   onClick={handleJoinSession}
                   disabled={isJoiningSession || joinCode.length !== 6}
-                  className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg flex items-center justify-center"
+                  className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg flex items-center justify-center transition-colors"
                 >
                   {isJoiningSession ? (
                     <>
@@ -769,43 +816,50 @@ function App() {
 
   // Main app interface - now with session info
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="container mx-auto px-4 py-8">
-        <header className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <Navigation className="text-indigo-600" />
+    <div className="min-h-screen bg-gray-100 flex flex-col">
+      {/* Top Navigation Bar */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-full bg-indigo-600">
+              <Navigation size={18} className="text-white" />
+            </div>
+            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
               MEETease
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Find the perfect meeting point for everyone
-            </p>
+            </span>
           </div>
           
           {/* Session information */}
-          <div className="mt-4 sm:mt-0 flex items-center gap-3 bg-white py-2 px-4 rounded-lg shadow-sm">
-            <div className="flex flex-col">
-              <span className="text-xs text-gray-500">Meeting Code:</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center bg-indigo-50 py-1 px-3 rounded-full">
+              <span className="text-xs text-gray-500 mr-1">Meeting:</span>
               <span className="font-mono font-bold text-indigo-600">{sessionCode}</span>
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(sessionCode);
+                  alert("Meeting code copied to clipboard!");
+                }}
+                className="ml-2 p-1 hover:bg-indigo-100 rounded-full"
+                title="Copy meeting code"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
             </div>
-            <button 
-              onClick={() => {
-                navigator.clipboard.writeText(sessionCode);
-                // In a real app, show a toast notification
-                alert("Meeting code copied to clipboard!");
-              }}
-              className="p-2 hover:bg-gray-100 rounded-full"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-            </button>
+            <div className="flex items-center gap-1 bg-green-50 py-1 px-3 rounded-full">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+              <span className="text-xs text-green-700">Live</span>
+            </div>
           </div>
-        </header>
+        </div>
+      </header>
 
+      {/* Main Content */}
+      <div className="flex-1 container mx-auto px-4 py-4">
         {/* Ad Blocker Warning Banner - Only shown when needed */}
-        <div id="adblock-warning" className="mb-6 bg-amber-50 border border-amber-300 text-amber-800 px-4 py-3 rounded-lg hidden">
+        <div id="adblock-warning" className="mb-4 bg-amber-50 border border-amber-300 text-amber-800 px-4 py-3 rounded-lg hidden">
           <div className="flex items-start">
             <div className="flex-shrink-0 pt-0.5">
               <AlertTriangle size={20} />
@@ -819,22 +873,69 @@ function App() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Tab Navigation */}
+        <div className="mb-4 border-b border-gray-200">
+          <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
+            <li className="mr-2">
+              <a href="#map" className="inline-block p-4 border-b-2 border-indigo-600 rounded-t-lg text-indigo-600 active">
+                <MapIcon className="inline-block mr-2" size={16} /> Map View
+              </a>
+            </li>
+            <li className="mr-2">
+              <a href="#participants" className="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300">
+                <Users className="inline-block mr-2" size={16} /> Participants
+              </a>
+            </li>
+            <li className="mr-2">
+              <a href="#settings" className="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-2">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg> Settings
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-lg p-4">
-              <div className="h-[600px]">
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="h-[500px]">
                 <Map />
               </div>
             </div>
           </div>
 
           <div className="space-y-6">
-            <ParticipantList />
+            <div className="bg-white rounded-lg shadow-md p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-800">Participants</h2>
+                <span className="bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                  {participants.length} {participants.length === 1 ? 'Person' : 'People'}
+                </span>
+              </div>
+              <ParticipantList />
+            </div>
 
-            <div className="bg-white rounded-lg shadow-lg p-4">
-              <h2 className="text-xl font-semibold mb-4">Locations</h2>
+            <div className="bg-white rounded-lg shadow-md p-5">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Locations</h2>
               
-              {participants.map((participant) => (
+              {/* Show one location search for the current user first */}
+              {participants.filter(p => p.name === userName).map((participant) => (
+                <div key={participant.id} className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Your Location
+                  </label>
+                  <LocationSearch
+                    onLocationSelect={handleParticipantLocation(participant.id)}
+                    placeholder="Set your location"
+                    participantId={participant.id}
+                  />
+                </div>
+              ))}
+              
+              {/* Show location search for other participants */}
+              {participants.filter(p => p.name !== userName).map((participant) => (
                 <div key={participant.id} className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     {participant.name}'s Location
@@ -842,6 +943,7 @@ function App() {
                   <LocationSearch
                     onLocationSelect={handleParticipantLocation(participant.id)}
                     placeholder={`Set ${participant.name}'s location`}
+                    participantId={participant.id}
                   />
                 </div>
               ))}
@@ -860,6 +962,27 @@ function App() {
         </div>
       </div>
       
+      {/* Mobile Bottom Navigation */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-2 z-10">
+        <div className="flex justify-around">
+          <a href="#map" className="flex flex-col items-center text-indigo-600">
+            <MapIcon size={20} />
+            <span className="text-xs mt-1">Map</span>
+          </a>
+          <a href="#participants" className="flex flex-col items-center text-gray-600">
+            <Users size={20} />
+            <span className="text-xs mt-1">People</span>
+          </a>
+          <button className="flex flex-col items-center text-gray-600">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            <span className="text-xs mt-1">Settings</span>
+          </button>
+        </div>
+      </div>
+
       {/* Ad blocker detection script */}
       <script dangerouslySetInnerHTML={{
         __html: `
