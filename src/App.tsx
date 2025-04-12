@@ -174,6 +174,8 @@ function App() {
     try {
       // Listen to changes in the meeting data
       const unsubscribe = listenToMeetingChanges(code, (meetingData) => {
+        console.log("Received meeting data:", meetingData);
+        
         // Update local state based on Firebase data
         if (meetingData.meetingPoint) {
           setMeetingPoint(meetingData.meetingPoint);
@@ -185,10 +187,25 @@ function App() {
         
         // Sync participants
         if (meetingData.participants) {
-          Object.values(meetingData.participants).forEach((participant: any) => {
-            // Only update other participants' locations, not our own
-            if (participant.id !== userId && participant.location) {
-              updateParticipantLocation(participant.id, participant.location);
+          // Get all participants from Firebase
+          const firebaseParticipants = Object.values(meetingData.participants);
+          console.log("Firebase participants:", firebaseParticipants);
+          
+          // Update each participant in local state
+          firebaseParticipants.forEach((remoteParticipant: any) => {
+            // Check if this participant exists in our local state
+            const existingParticipant = participants.find(p => p.id === remoteParticipant.id);
+            
+            if (!existingParticipant && remoteParticipant.id !== userId) {
+              // If participant doesn't exist locally and isn't the current user, add them
+              console.log("Adding new participant:", remoteParticipant.name);
+              addParticipant(remoteParticipant.name, remoteParticipant.id);
+            }
+            
+            // Update location if available
+            if (remoteParticipant.location && remoteParticipant.id !== userId) {
+              console.log("Updating location for:", remoteParticipant.name);
+              updateParticipantLocation(remoteParticipant.id, remoteParticipant.location);
             }
           });
         }

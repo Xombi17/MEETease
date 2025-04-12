@@ -18,14 +18,15 @@ export interface MeetingState {
   participants: Participant[];
   meetingPoint?: Location;
   destination?: Location;
-  addParticipant: (name: string) => void;
+  
+  addParticipant: (name: string, id?: string) => void;
   removeParticipant: (id: string) => void;
   updateParticipantLocation: (id: string, location: Location) => void;
   setMeetingPoint: (location: Location) => void;
   setDestination: (location: Location) => void;
-  calculateMeetingPoint: () => void;
   toggleLocationSharing: (id: string) => void;
   updateDirections: (id: string, directions: google.maps.DirectionsResult) => void;
+  calculateMeetingPoint: () => void;
 }
 
 export const MUMBAI_CENTER: Location = {

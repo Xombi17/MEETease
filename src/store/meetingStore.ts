@@ -6,9 +6,9 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
   meetingPoint: undefined,
   destination: undefined,
 
-  addParticipant: (name: string) => set((state) => ({
+  addParticipant: (name: string, id?: string) => set((state) => ({
     participants: [...state.participants, {
-      id: crypto.randomUUID(),
+      id: id || crypto.randomUUID(),
       name,
       isReady: false,
       isSharing: false,
