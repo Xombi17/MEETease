@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapPin, Navigation, Users, Map as MapIcon, ArrowRight, ChevronRight, Clock, Route, Share2, Star, Menu, X, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Map from './components/Map';
@@ -6,6 +6,14 @@ import ParticipantList from './components/ParticipantList';
 import LocationSearch from './components/LocationSearch';
 import { useMeetingStore } from './store/meetingStore';
 import type { Location } from './types/maps';
+import { 
+  createMeetingSession, 
+  joinMeetingSession, 
+  updateParticipantLocation as updateFirebaseLocation,
+  updateMeetingPoint,
+  updateDestination as updateFirebaseDestination,
+  listenToMeetingChanges
+} from './firebase';
 
 function App() {
   const [showApp, setShowApp] = useState(false);
@@ -15,10 +23,44 @@ function App() {
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [isJoiningSession, setIsJoiningSession] = useState(false);
   const [isSessionActive, setIsSessionActive] = useState(false);
-  const { participants, setDestination, updateParticipantLocation } = useMeetingStore();
+  const [userId, setUserId] = useState<string>('');
+  const [userName, setUserName] = useState<string>('');
+  const [isNameModalOpen, setIsNameModalOpen] = useState(false);
+  const { 
+    participants, 
+    setDestination, 
+    updateParticipantLocation, 
+    addParticipant,
+    setMeetingPoint
+  } = useMeetingStore();
+
+  // Generate a random user ID on first load
+  useEffect(() => {
+    // Generate a random user ID if not already set
+    if (!userId) {
+      setUserId(crypto.randomUUID());
+    }
+
+    // Safety timeout to prevent infinite loading
+    const safetyTimeout = setTimeout(() => {
+      if (isCreatingSession || isJoiningSession) {
+        setIsCreatingSession(false);
+        setIsJoiningSession(false);
+        alert('Connection timed out. Please check your Firebase configuration and try again.');
+      }
+    }, 5000);
+
+    return () => clearTimeout(safetyTimeout);
+  }, [isCreatingSession, isJoiningSession]);
 
   const handleParticipantLocation = (participantId: string) => (location: Location) => {
+    // Update local state
     updateParticipantLocation(participantId, location);
+    
+    // Update Firebase if we're in an active session
+    if (isSessionActive && sessionCode) {
+      updateFirebaseLocation(sessionCode, participantId, location);
+    }
   };
 
   const generateSessionCode = () => {
@@ -31,28 +73,147 @@ function App() {
     return result;
   };
 
-  const handleCreateSession = () => {
+  const handleCreateSession = async () => {
+    if (!userName) {
+      setIsNameModalOpen(true);
+      return;
+    }
+    
     setIsCreatingSession(true);
-    // Generate a random session code
-    const newCode = generateSessionCode();
-    setSessionCode(newCode);
-    // In a real app, this would connect to a backend
-    setTimeout(() => {
+    try {
+      // Check if Firebase is configured
+      if (!import.meta.env.VITE_FIREBASE_API_KEY || !import.meta.env.VITE_FIREBASE_DATABASE_URL) {
+        // If Firebase is not configured, simulate session creation for development
+        console.warn('Firebase not configured. Running in development mode with simulated backend.');
+        const newCode = generateSessionCode();
+        setSessionCode(newCode);
+        addParticipant(userName);
+        
+        // Simulate delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        setIsCreatingSession(false);
+        setIsSessionActive(true);
+        return;
+      }
+      
+      // Generate a random session code
+      const newCode = generateSessionCode();
+      
+      // Create session in Firebase
+      await createMeetingSession(newCode);
+      
+      // Add user as first participant in Firebase
+      await joinMeetingSession(newCode, userId, userName);
+      
+      // Add self as participant in local state
+      addParticipant(userName);
+      
+      setSessionCode(newCode);
+      setupRealtimeSync(newCode);
+      
       setIsCreatingSession(false);
       setIsSessionActive(true);
-    }, 1500);
+    } catch (error) {
+      console.error('Error creating session:', error);
+      setIsCreatingSession(false);
+      alert('Failed to create meeting. Please try again.');
+    }
   };
 
-  const handleJoinSession = () => {
+  const handleJoinSession = async () => {
     if (!joinCode) return;
+    if (!userName) {
+      setIsNameModalOpen(true);
+      return;
+    }
     
     setIsJoiningSession(true);
-    // In a real app, this would validate with a backend
-    setTimeout(() => {
+    try {
+      // Check if Firebase is configured
+      if (!import.meta.env.VITE_FIREBASE_API_KEY || !import.meta.env.VITE_FIREBASE_DATABASE_URL) {
+        // If Firebase is not configured, simulate session joining for development
+        console.warn('Firebase not configured. Running in development mode with simulated backend.');
+        setSessionCode(joinCode);
+        addParticipant(userName);
+        
+        // Simulate delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        setIsJoiningSession(false);
+        setIsSessionActive(true);
+        return;
+      }
+      
+      // Join session in Firebase
+      await joinMeetingSession(joinCode, userId, userName);
+      
+      // Add self as participant in local state
+      addParticipant(userName);
+      
       setSessionCode(joinCode);
+      setupRealtimeSync(joinCode);
+      
       setIsJoiningSession(false);
       setIsSessionActive(true);
-    }, 1500);
+    } catch (error) {
+      console.error('Error joining session:', error);
+      setIsJoiningSession(false);
+      alert('Failed to join meeting. Please check the code and try again.');
+    }
+  };
+  
+  // Setup realtime synchronization with Firebase
+  const setupRealtimeSync = (code: string) => {
+    // Skip Firebase sync if not configured
+    if (!import.meta.env.VITE_FIREBASE_API_KEY || !import.meta.env.VITE_FIREBASE_DATABASE_URL) {
+      console.warn('Firebase not configured. Skipping realtime sync.');
+      return () => {}; // Return empty cleanup function
+    }
+    
+    try {
+      // Listen to changes in the meeting data
+      const unsubscribe = listenToMeetingChanges(code, (meetingData) => {
+        // Update local state based on Firebase data
+        if (meetingData.meetingPoint) {
+          setMeetingPoint(meetingData.meetingPoint);
+        }
+        
+        if (meetingData.destination) {
+          setDestination(meetingData.destination);
+        }
+        
+        // Sync participants
+        if (meetingData.participants) {
+          Object.values(meetingData.participants).forEach((participant: any) => {
+            // Only update other participants' locations, not our own
+            if (participant.id !== userId && participant.location) {
+              updateParticipantLocation(participant.id, participant.location);
+            }
+          });
+        }
+      });
+      
+      // Clean up listener on component unmount
+      return () => {
+        if (unsubscribe) {
+          unsubscribe();
+        }
+      };
+    } catch (error) {
+      console.error('Error setting up realtime sync:', error);
+      return () => {}; // Return empty cleanup function
+    }
+  };
+  
+  const handleDestinationChange = (location: Location) => {
+    // Update local state
+    setDestination(location);
+    
+    // Update Firebase if we're in an active session
+    if (isSessionActive && sessionCode) {
+      updateFirebaseDestination(sessionCode, location);
+    }
   };
 
   if (!showApp) {
@@ -493,6 +654,45 @@ function App() {
           </div>
         </header>
         
+        {/* Name Input Modal */}
+        {isNameModalOpen && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white/10 backdrop-blur-lg border border-white/10 rounded-2xl p-8 shadow-lg w-full max-w-md mx-4">
+              <h2 className="text-2xl font-bold mb-4 text-center">What's your name?</h2>
+              <p className="text-gray-300 mb-6 text-center">Enter your name to continue</p>
+              
+              <input 
+                type="text" 
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                placeholder="Your name" 
+                className="w-full px-4 py-3 bg-black/30 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-6"
+                autoFocus
+              />
+              
+              <div className="flex justify-end">
+                <button
+                  disabled={!userName.trim()}
+                  onClick={() => {
+                    if (userName.trim()) {
+                      setIsNameModalOpen(false);
+                      // Continue with the action that opened the modal
+                      if (joinCode) {
+                        handleJoinSession();
+                      } else {
+                        handleCreateSession();
+                      }
+                    }
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg"
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-8 shadow-lg">
             <h2 className="text-2xl font-bold mb-6 text-center">Start or Join a Meeting</h2>
@@ -634,7 +834,7 @@ function App() {
                   Final Destination (Optional)
                 </label>
                 <LocationSearch
-                  onLocationSelect={setDestination}
+                  onLocationSelect={handleDestinationChange}
                   placeholder="Set final destination"
                 />
               </div>

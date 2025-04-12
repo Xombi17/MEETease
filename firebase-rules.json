@@ -1,0 +1,24 @@
+{
+  "rules": {
+    "meetings": {
+      "$meetingId": {
+        ".read": "data.exists()",
+        ".write": "!data.exists() || data.exists()",
+        
+        "participants": {
+          "$participantId": {
+            ".write": "auth.uid === $participantId || !data.exists() || data.child('id').val() === $participantId"
+          }
+        },
+        
+        "meetingPoint": {
+          ".write": "root.child('meetings').child($meetingId).child('participants').child(auth.uid).exists()"
+        },
+        
+        "destination": {
+          ".write": "root.child('meetings').child($meetingId).child('participants').child(auth.uid).exists()"
+        }
+      }
+    }
+  }
+} 
